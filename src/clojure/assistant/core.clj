@@ -40,31 +40,29 @@
         (let [msg (<!! socket-out)]
           (ws/send! socket msg))
         (recur)))
-    (<!!
-     (async/thread
-       (loop [initialized false]
-         (let [msg (async/poll! socket-in)]
-           (when msg
-             (pprint/pprint msg))
-           (cond (= (:type msg) "session.created")
-                 (do
-                   (>!! socket-out {:type    "session.update"
-                                    :session SESSION-UPDATE})
-                   (recur false))
+    (loop [initialized false]
+      (let [msg (async/poll! socket-in)]
+        (when msg
+          (pprint/pprint msg))
+        (cond (= (:type msg) "session.created")
+              (do
+                (>!! socket-out {:type    "session.update"
+                                 :session SESSION-UPDATE})
+                (recur false))
 
-                 (= (:type msg) "session.updated")
-                 (recur true)
+              (= (:type msg) "session.updated")
+              (recur true)
 
-                 (= (:type msg)
-                    "conversation.item.input_audio_transcription.completed")
-                 (do
-                   (println (:transcript msg))
-                   (recur true))
+              (= (:type msg)
+                 "conversation.item.input_audio_transcription.completed")
+              (do
+                (println (:transcript msg))
+                (recur true))
 
-                 :else
-                 (do
-                   (when initialized
-                     (>!! socket-out
-                          {:type "input_audio_buffer.append"
-                           :audio (<!! samples)}))
-                   (recur initialized)))))))))
+              :else
+              (do
+                (when initialized
+                  (>!! socket-out
+                       {:type "input_audio_buffer.append"
+                        :audio (<!! samples)}))
+                (recur initialized)))))))
